@@ -4,3 +4,6 @@
 # Editor/IDE
 .idea/
 .vscode/
+
+# Output
+dist/

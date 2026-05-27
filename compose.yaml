@@ -1,0 +1,144 @@
+name: lowerror-dev
+
+networks: ######################################################################
+
+  # Network for all services that don't need external isolation.
+  main:
+
+  # Network for "socket-proxy" and all services that access it.
+  #
+  # WARNING: Services in this network can access the Docker daemon socket!
+  # Restricted, but still potentially risky.
+  #
+  internal_socket_proxy:
+    internal: true
+
+services: ######################################################################
+
+  # Simple proxy that restricts access to the Docker daemon socket.
+  socket-proxy:
+    image: lscr.io/linuxserver/socket-proxy:3.2.19@sha256:a1740f01925d07c4ed6e73ea21ec798cff28e0a811b3c1672617b95eee76d79c
+
+    restart: unless-stopped
+
+    networks:
+      internal_socket_proxy:
+
+    read_only: true
+    tmpfs:
+      - /run
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+    environment:
+      # Use specified timezone or default to Europe/Vienna.
+      TZ: ${TZ:-Europe/Vienna}
+
+      # Allow access to the `/containers` endpoint, which Traefik needs.
+      CONTAINERS: 1
+
+  # The Traefik reverse proxy, which registers and uses lowerror as an error
+  # middleware.
+  traefik:
+    image: traefik:3.7.1@sha256:6b9cbca6fac42ab0075f5437d8dc1685cfd188626d8d515839ea94f8b6271c42
+
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges
+
+    networks:
+      - main
+      - internal_socket_proxy
+    ports:
+      - '80:80'
+    extra_hosts:
+      # Make traefik.localhost point to the host machine, so we can access
+      # the Traefik Dashboard at http://traefik.localhost.
+      - 'traefik.localhost:host-gateway'
+
+    environment:
+      # Use specified timezone or default to Europe/Vienna.
+      TZ: ${TZ:-Europe/Vienna}
+
+      # Disable checking for new versions. Renovate will do that.
+      TRAEFIK_GLOBAL_CHECKNEWVERSION: false
+      # Disable sending anonymous usage statistics.
+      TRAEFIK_GLOBAL_SENDANONYMOUSUSAGE: false
+
+      # Define an entrypoint at port 80 (HTTP).
+      TRAEFIK_ENTRYPOINTS_http_ADDRESS: ':80'
+      # Make this the default entrypoint.
+      TRAEFIK_ENTRYPOINTS_http_ASDEFAULT: true
+
+      # Enable Docker to have traefik read the dynamic configuration from the
+      # Docker container labels.
+      TRAEFIK_PROVIDERS_DOCKER: true
+      # Use the Docker daemon socket proxy to access the Docker daemon.
+      TRAEFIK_PROVIDERS_DOCKER_ENDPOINT: tcp://socket-proxy:2375
+      # Do not expose all docker services, only the ones explicitly enabled.
+      TRAEFIK_PROVIDERS_DOCKER_EXPOSEDBYDEFAULT: false
+      # Ignore healthiness of services (uses 503 instead of 404).
+      TRAEFIK_PROVIDERS_DOCKER_ALLOWEMPTYSERVICES: true
+      # Use the main network to access proxied services.
+      TRAEFIK_PROVIDERS_DOCKER_NETWORK: lowerror-dev_main
+
+      # Enable the Traefik dashboard.
+      TRAEFIK_API_DASHBOARD: true
+
+      # Enable logging.
+      TRAEFIK_LOG: true
+      TRAEFIK_LOG_LEVEL: INFO
+
+    labels:
+      # Enable Traefik and define the router for the Traefik Dashboard.
+      traefik.enable: true
+      traefik.http.routers.traefik.rule: PathPrefix(`/api`) || PathPrefix(`/dashboard`)
+      # Use the lowerror middleware for the Traefik Dashboard.
+      # Note that this only makes lowerror handle error pages for the
+      # Traefik Dashboard, not for any other proxied services.
+      # Since Traefik Dashboard error pages are ugly too, it makes sense to use
+      # lowerror for them as well.
+      traefik.http.routers.traefik.middlewares: lowerror-middleware
+      # Use the built-in "api@internal" service.
+      traefik.http.routers.traefik.service: api@internal
+
+  # The lowhome dev service, built from source and able to automatically rebuild
+  # on code changes.
+  lowhome:
+    build:
+      context: .
+      dockerfile: ./compose.Dockerfile
+    develop:
+      watch:
+        - path: .
+          action: rebuild
+
+    restart: no # Just fail so we can quickly see where things went wrong.
+    security_opt:
+      - no-new-privileges
+    cap_drop:
+      - ALL
+
+    networks:
+      - main
+
+    read_only: true
+
+    environment:
+      # Use specified timezone or default to Europe/Vienna.
+      TZ: ${TZ:-Europe/Vienna}
+
+      # Env vars for testing lowerror configuration:
+      #LOWERROR_ADDRESS: :8283
+
+    labels:
+      traefik.enable: true
+      traefik.http.services.lowerror.loadBalancer.server.port: 80
+      traefik.http.routers.lowerror.rule: HostRegexp(`.+`)
+      #traefik.http.routers.lowerror.middlewares: lowerror-middleware # TODO: Not needed?
+      traefik.http.routers.lowerror.priority: 10
+
+      # Define the lowerror middleware.
+      traefik.http.middlewares.lowerror-middleware.errors.status: 400-599
+      traefik.http.middlewares.lowerror-middleware.errors.service: lowerror
+      traefik.http.middlewares.lowerror-middleware.errors.query: /{status}

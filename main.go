@@ -6,6 +6,8 @@ import (
 	"strconv"
 )
 
+// TODO: Try writing this as a Traefik plugin? Maybe a hybrid or a way to use the same repo for both the service and the plugin?
+
 type handler struct{}
 
 // ServeHTTP implements the http.Handler interface for our custom handler.

@@ -1,0 +1,27 @@
+#!/bin/sh
+
+# A GoReleaser wrapper using Docker, allowing you to use GoReleaser without
+# the need to install it locally with a package manager or otherwise.
+
+# Set up shell script "strict mode".
+# shellcheck enable=all
+IFS="$(printf ' \n\t')"
+set -eu
+
+# These constants are auto-managed by Renovate Bot. Don't move them around!
+# renovate: datasource=docker
+IMAGE_NAME="goreleaser/goreleaser"
+IMAGE_VERSION="v2.16.0"
+IMAGE_DIGEST="sha256:f5ce92e9a38fb9406ccd638b95e43402cd3f4c567cb677eb06af9fd161278c12"
+
+# Run the Docker container with the script's directory mounted and the arguments passed through.
+# Note that we also mount the Docker socket to allow GoReleaser to build Docker images.
+script_dir="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)" # Source: https://stackoverflow.com/a/29835459
+exec docker run \
+	--quiet \
+	--rm \
+	--mount type=bind,source=/var/run/docker.sock,destination=/var/run/docker.sock,readonly \
+	--mount type=bind,source="${script_dir}",destination=/work \
+	--workdir /work \
+	"${IMAGE_NAME}:${IMAGE_VERSION}@${IMAGE_DIGEST}" \
+	"$@"

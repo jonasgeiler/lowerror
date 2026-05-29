@@ -1,0 +1,13 @@
+{
+	"$schema": "https://docs.renovatebot.com/renovate-schema.json",
+	"extends": ["github>jonasgeiler/renovate-config"],
+	"customManagers": [
+		{
+			"customType": "regex",
+			"managerFilePatterns": ["/(^|/)goreleaser$/", "/(^|/)dprint$/"],
+			"matchStrings": [
+				"# renovate: datasource=(?<datasource>[a-zA-Z0-9-._]+?)(?: (lookupName|packageName)=(?<packageName>[^\\s]+?))?(?: versioning=(?<versioning>[^\\s]+?))?(?: extractVersion=(?<extractVersion>[^\\s]+?))?(?: registryUrl=(?<registryUrl>[^\\s]+?))?\\s(?:[A-Za-z0-9_]+?_)?NAME[ =][\"']?(?<depName>.+?)[\"']?\\s(?:[A-Za-z0-9_]+?_)?VERSION[ =][\"']?(?<currentValue>.+?)[\"']?(?:\\s(?:[A-Za-z0-9_]+?_)?DIGEST[ =][\"']?(?<currentDigest>.+?)[\"']?)?\\s"
+			]
+		}
+	]
+}

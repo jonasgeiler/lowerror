@@ -102,9 +102,9 @@ services: ######################################################################
       # Use the built-in "api@internal" service.
       traefik.http.routers.traefik.service: api@internal
 
-  # The lowhome dev service, built from source and able to automatically rebuild
+  # The lowerror dev service, built from source and able to automatically rebuild
   # on code changes.
-  lowhome:
+  lowerror:
     build:
       context: .
       dockerfile: ./compose.Dockerfile

@@ -1,0 +1,12 @@
+#!/bin/sh
+# Git hook file
+# See: https://git-scm.com/docs/githooks
+
+########## STRICT MODE & SETUP ##########
+# shellcheck enable=all
+IFS="$(printf ' \n\t')"
+export PATH=".:${PATH}"
+set -o errexit -o nounset -o xtrace
+#########################################
+
+go tool dprint check --staged --allow-no-files

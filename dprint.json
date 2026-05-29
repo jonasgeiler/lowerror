@@ -1,0 +1,16 @@
+{
+	"plugins": [
+		"https://plugins.dprint.dev/markdown-0.21.1.wasm",
+		"https://plugins.dprint.dev/dockerfile-0.3.3.wasm",
+		"https://plugins.dprint.dev/g-plane/pretty_yaml-v0.6.0.wasm",
+		"https://plugins.dprint.dev/jakebailey/gofumpt-v0.0.8.wasm",
+		"https://github.com/mridang/dprint-go/releases/download/v1.4.0/shfmt.wasm"
+	],
+	"excludes": ["**/LICENSE.md"],
+	"yaml": {
+		"quotes": "preferSingle"
+	},
+	"go-shfmt": {
+		"associations": [".githooks/*"]
+	}
+}

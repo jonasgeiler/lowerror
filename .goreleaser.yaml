@@ -1,0 +1,180 @@
+# GoReleaser config file
+# See: https://goreleaser.com
+
+# $schema: https://raw.githubusercontent.com/goreleaser/goreleaser/refs/tags/v2.16.0/www/static/schema.json
+version: 2
+
+###
+
+project_name: &project_name lowerror
+
+###
+
+snapshot:
+  # Use a more predictable version for snapshots. They aren't published anyway.
+  version_template: snapshot
+
+###
+
+env:
+  # Flag used by some tools to enable CI mode, which is useful here.
+  - CI=true
+
+###
+
+before:
+  hooks:
+    # Ensure the Go module dependencies are tidy.
+    # Especially important for avoiding issues during parallel builds.
+    # See: https://goreleaser.com/customization/builds/builders/go/#go-modules
+    - go mod tidy
+
+###
+
+builds:
+  - id: *project_name
+    binary: *project_name
+
+    targets:
+      # Only target Go's first-class ports.
+      # See: https://go.dev/wiki/PortingPolicy#first-class-ports
+      # Currently, those are:
+      #  - darwin/amd64
+      #  - darwin/arm64
+      #  - linux/386
+      #  - linux/amd64
+      #  - linux/arm
+      #  - linux/arm64
+      #  - windows/386
+      #  - windows/amd64
+      - go_first_class
+
+    env:
+      # Disable CGO for static linking and better cross-compilation support.
+      - CGO_ENABLED=0
+
+    flags:
+      # Remove file system paths from the compiled binary for smaller and reproducible builds.
+      - '-trimpath'
+
+    ldflags:
+      # Strip debug information and symbol table.
+      - '-s -w'
+
+    # Overwrite the modified timestamp on the output binary.
+    mod_timestamp: '{{.CommitTimestamp}}' # Use commit timestamp for reproducible builds.
+
+###
+
+archives:
+  - formats:
+      # Don't create archives. Upload binaries directly.
+      - binary
+
+###
+
+checksum:
+  # By default, the file name contains the project name and version,
+  # but since we only have one build it is simpler to just use a fixed name.
+  name_template: sha256-checksums.txt
+
+###
+
+report_sizes: true
+
+###
+
+dockers_v2:
+  - &regular_docker_config # Docker configuration for regular releases.
+    # Don't use this Docker configuration for snapshots.
+    disable: '{{.IsSnapshot}}'
+
+    id: *project_name
+    dockerfile: ./.goreleaser.Dockerfile
+    build_args:
+      SOURCE_DATE_EPOCH: '{{.CommitTimestamp}}' # Use commit timestamp for reproducible builds.
+
+    images:
+      - 'jonasgeiler/{{.ProjectName}}'
+      - 'ghcr.io/jonasgeiler/{{.ProjectName}}'
+
+    tags:
+      - '{{.Version}}'
+
+      # Only use the "latest", major and major-minor tags for stable releases.
+      # We do this by checking for an empty prerelease field, which is stable.
+      - '{{if eq .Prerelease ""}}latest{{end}}'
+      - '{{if eq .Prerelease ""}}{{.Major}}{{end}}'
+      - '{{if eq .Prerelease ""}}{{.Major}}.{{.Minor}}{{end}}'
+
+    labels:
+      org.opencontainers.image.title: *project_name
+      org.opencontainers.image.description: &project_description A low-footprint error page service for Traefik.
+      org.opencontainers.image.licenses: &project_license MIT
+
+      org.opencontainers.image.source: &project_source 'https://github.com/jonasgeiler/{{.ProjectName}}'
+      org.opencontainers.image.url: *project_source
+      org.opencontainers.image.documentation: *project_source
+
+      org.opencontainers.image.created: '{{.CommitDate}}'
+      org.opencontainers.image.revision: '{{.FullCommit}}'
+      org.opencontainers.image.version: '{{.Version}}'
+
+      org.opencontainers.image.base.name: '{{.BaseImage}}'
+      org.opencontainers.image.base.digest: '{{.BaseImageDigest}}'
+
+    annotations:
+      # Duplicate the labels as annotations for better discoverability in
+      # container registries that support OCI annotations on an image index.
+      index:org.opencontainers.image.title: *project_name
+      index:org.opencontainers.image.description: *project_description
+      index:org.opencontainers.image.licenses: *project_license
+      index:org.opencontainers.image.source: *project_source
+      index:org.opencontainers.image.url: *project_source
+      index:org.opencontainers.image.documentation: *project_source
+      index:org.opencontainers.image.created: '{{.CommitDate}}'
+      index:org.opencontainers.image.revision: '{{.FullCommit}}'
+      index:org.opencontainers.image.version: '{{.Version}}'
+      index:org.opencontainers.image.base.name: '{{.BaseImage}}'
+      index:org.opencontainers.image.base.digest: '{{.BaseImageDigest}}'
+
+  - <<: *regular_docker_config # Extend the regular Docker configuration.
+    # Use this Docker configuration only for snapshots.
+    disable: '{{not .IsSnapshot}}'
+
+    # Need to use a different ID here.
+    id: snapshot
+
+    tags:
+      # Only use the plain version as tag for snapshots.
+      - '{{.Version}}'
+
+    # Unset index annotations since they are not supported by snapshots.
+    annotations: {}
+
+###
+
+docker_digest:
+  # By default, it is called "digests.txt", but we want to make its purpose
+  # more clear.
+  name_template: docker-digests.txt
+
+###
+
+changelog:
+  # Generate changelog using GitHub's native release notes generator, which is
+  # based on pull request labels and the `./.github/release.yaml` config file.
+  use: github-native
+
+###
+
+release:
+  # Allow editing the release notes before fully publishing.
+  # Note that Docker images will already be published at this point.
+  draft: true
+
+  extra_files:
+    # Include the Docker digests file in the release assets.
+    - glob: ./dist/docker-digests.txt
+
+# TODO: Find a way to do prerelease for v0.x.x

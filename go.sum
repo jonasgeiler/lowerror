@@ -1,0 +1,4 @@
+github.com/jonasgeiler/gotoolbox v0.0.1 h1:nB0RpfNHvJzRdPYPm1C8WV7J1f/sEHEXdBqPhHud+Ow=
+github.com/jonasgeiler/gotoolbox v0.0.1/go.mod h1:D7x0VN1WU9VUADD6Quq1HK/EOEBi0QPjvgAZdcHtfXY=
+github.com/jonasgeiler/gotoolbox/dprint v0.54.0 h1:qJamwDGMwbrTGSKsPZ13NqwOx69vB/7oyxSZKjKoZ6Q=
+github.com/jonasgeiler/gotoolbox/dprint v0.54.0/go.mod h1:QKRV5C4wBHiGO5/Ni6M+0ijTCk7JyqT637wTEZSwMOU=

@@ -14,7 +14,7 @@ WORKDIR /
 ARG TARGETPLATFORM
 COPY "${TARGETPLATFORM}/lowerror" /lowerror
 
-EXPOSE 8080
+EXPOSE 80
 USER nonroot:nonroot
 
 ENTRYPOINT ["/lowerror"]

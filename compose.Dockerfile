@@ -37,7 +37,7 @@ WORKDIR /
 ARG TARGETPLATFORM
 COPY --from=build-stage "${TARGETPLATFORM}/lowerror" /lowerror
 
-EXPOSE 8080
+EXPOSE 80
 USER nonroot:nonroot
 
 ENTRYPOINT ["/lowerror"]
